@@ -51,6 +51,7 @@ def urljoin(*parts):
 bottle.debug(True)
 BASE_BRANCH = 'gh-pages'
 PUSH_LOCATION = 'openpullrequests'
+PULL_LOCATION = 'niccokunzmann'
 base_branch = BASE_BRANCH
 checkout_base_branch = git.checkout(base_branch)
 repository_to_path = lambda repository: os.path.join(repositories_folder, repository)
@@ -106,7 +107,6 @@ def _change_repository_content(branch, repository, filepath):
     _commit_changes(filepath)
     return redirect('/branch/{}/{}/{}'.format(branch, repository, filepath))
 
-
 @post('/repo/<repository>/')
 @post('/repo/<repository>/<filepath:path>')
 def change_repository_content(repository, filepath = ''):
@@ -117,8 +117,6 @@ def change_repository_content(repository, filepath = ''):
             checkout_base_branch()
             branch = new_branch()
             return _change_repository_content(branch, repository, filepath)
-
-# TODO: commit bei keinen aenderungen
 
 @route('/repo/<repository>')
 def repository_and_no_directory(repository):
@@ -179,8 +177,6 @@ def _create_pull_request(branch, repository, filepath):
             <a href="{}">Zur&uuml;ck zur Webseite</a><br />
         </div></body></html>""".format(pull_request_url, repository_url)
 
-
-
 def github():
     config = configuration()
     return pygithub3.Github(login=config['user_name'], password=config['password'])
@@ -209,6 +205,21 @@ def create_pull_request_on_server(branch):
 @post('/pull/<repository>')
 def github_repo_has_changed_hook(repository):
     check_repository(repository)
+    with inRepository(repository):
+        checkout_base_branch()
+        updates = [PULL_LOCATION]
+        git.pull(PULL_LOCATION, BASE_BRANCH)()
+        try: git.pull(PUSH_LOCATION, BASE_BRANCH)()
+        except CalledProcessError as e:
+            if 'Couldn\'t find remote ref' not in e.output: raise
+            try: git.pull('origin', BASE_BRANCH)()
+            except CalledProcessError as e:
+                if 'Couldn\'t find remote ref' not in e.output: raise
+            else:
+                updates.append('origin')
+        else:
+            updates.append(PUSH_LOCATION)
+    return 'Repository updated from ' + ', '.join(updates)
 
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
