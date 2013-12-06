@@ -1,3 +1,4 @@
+#!/usr/bin/python2.7
 from bottle import route, post, default_app, request, redirect, static_file, get
 import bottle
 import os
@@ -5,21 +6,27 @@ from command_line import *
 import mimetypes
 import json
 import pygithub3
-from urllib import urlencode
+from urllib import quote
+import urlparse
+from requests import HTTPError
 
 try:
     __file__
 except NameError:
-    __file__ = os.path.join(os.getcwd(), 'bottle_app.py')
-local_dir = os.path.dirname(__file__)
-
-
+    local_dir = os.getcwd()
+    __file__ = os.path.join(local_dir, 'bottle_app.py')
+else:
+    # f***ing git shell
+    __file__ = os.path.abspath(__file__)
+    local_dir = os.path.join(__file__, '..')
 
 REPOSITORIES_FOLDER = './repositories'
 repositories_folder = os.path.abspath(os.path.join(local_dir, REPOSITORIES_FOLDER))
 
 def configuration():
-    return json.load(open('config.json'))
+    with inDirectory(local_dir):
+        print os.getcwd(), local_dir
+        return json.load(open('config.json'))
 
 @DoUndo
 def inDirectory(directory):
@@ -37,7 +44,9 @@ def root():
         s += '<a href="{}">{}</a><br />'.format('/repo/' + repository, repository)
     s += '''</div></body></html>'''
     return s
-    
+
+def urljoin(*parts):
+    return '/'.join(parts)
     
 bottle.debug(True)
 BASE_BRANCH = 'gh-pages'
@@ -87,7 +96,11 @@ def _commit_changes(filepath):
     with open(filepath, 'wb') as file:
         file.write(sourcecode)
     git.add(filepath)()
-    git.commit('-m', comment)()
+    try: git.commit('-m', comment)()
+    except CalledProcessError as e:
+        if 'nothing to commit, working directory clean' not in e.output:
+            raise
+    
 
 def _change_repository_content(branch, repository, filepath):
     _commit_changes(filepath)
@@ -120,7 +133,10 @@ def default_repository_content(repository, filepath = ''):
             return _repository_content(repository, filepath)
 
 def build_url_repo_path(repository, filepath = ''):
-    return os.pat.join('/repo/', repository, filepath)
+    return urljoin('/repo', repository, filepath)
+
+def build_url_branch_repo_path(branch, repository, filepath = ''):
+    return urljoin('/branch', branch, repository, filepath)
 
 @post('/publish/repo/<repository>/')
 @post('/publish/repo/<repository>/<filepath:path>')
@@ -131,7 +147,7 @@ def create_pull_request_from_repository(repository, filepath = ''):
         with stash():
             checkout_base_branch()
             branch = new_branch()
-            return _create_pull_request(repository, filepath)
+            return _create_pull_request(branch, repository, filepath)
 
 @post('/publish/branch/<branch>/<repository>/')
 @post('/publish/branch/<branch>/<repository>/<filepath:path>')
@@ -141,42 +157,58 @@ def create_pull_request_from_branch(branch, repository, filepath = ''):
     with inRepository(repository):
         with stash():
             git.checkout(branch)()
-            return _create_pull_request(repository, filepath)
+            return _create_pull_request(branch, repository, filepath)
 
-def _create_pull_request(repository, filepath):
+def _create_pull_request(branch, repository, filepath):
     _commit_changes(filepath)
-    pull_request_url = create_pull_request(branch)
+    repository_url = quote(build_url_branch_repo_path(branch, repository, filepath), safe = u':/')
+    try:
+        pull_request_url = create_pull_request_on_server(branch)
+    except HTTPError as e:
+        return """
+            <html><body><div align="center">
+                <h1>Anfrage konnte nicht gestellt werden</h1>
+                <a href="{}">Zur&uuml;ck zur Webseite</a><br />
+                Github meldet: {}
+            </div></body></html>""".format(repository_url, e)
     pull_request_url = quote(pull_request_url, safe = u':/')
-    repository_url = quote(build_url_repo_path(repository, filepath), safe = u':/')
     return """
         <html><body><div align="center">
             <h1>Eine Anfrage wurde erstellt</h1>
             <a href="{}">Anfrage ansehen</a><br />
             <a href="{}">Zur&uuml;ck zur Webseite</a><br />
         </div></body></html>""".format(pull_request_url, repository_url)
-                                       
-    
+
+
 
 def github():
     config = configuration()
     return pygithub3.Github(login=config['user_name'], password=config['password'])
 
-def create_pull_request_on_server():
+def create_pull_request_on_server(branch):
     global pullrequest
     git.push(PUSH_LOCATION, branch)() # http://stackoverflow.com/questions/1519006/git-how-to-create-remote-branch
     title = request.forms.get('title')
     body = request.forms.get('body')
+    if not title:
+        title = request.forms.get('comment').split('\n', 1)[0]
+    if not body:
+        body = request.forms.get('comment')
     commit = last_commit()
-    pullrequest = github().pull_requests.create({
-          "title": title,
-          "body": body,
-          "head": commit,
-          "base": base_branch
-        }, 'niccokunzmann', 'spiele-mit-kindern')
-    return pullrequest.issue_url
-    
-    
+##    pullrequest = github().pull_requests.create({
+##          "title": title,
+##          "body": body,
+##          "head": commit,
+##          "base": base_branch
+##        }, 'niccokunzmann', 'spiele-mit-kindern')
+##    return pullrequest.issue_url
+    raise HTTPError()
+    return 'https://github.com/niccokunzmann/spiele-mit-kindern/pull/7'
 
+@post('/pull/<repository>/')
+@post('/pull/<repository>')
+def github_repo_has_changed_hook(repository):
+    check_repository(repository)
 
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
