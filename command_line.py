@@ -1,4 +1,5 @@
 import subprocess
+import os
 
 class CalledProcessError(subprocess.CalledProcessError):
     def __str__(self):
@@ -101,3 +102,12 @@ def stash():
     yield
 ##    if 'No local changes to save'.lower() not in output.splitlines()[0].lower():
 ##        git.stash.pop()
+
+
+@DoUndo
+def inDirectory(directory):
+    here = os.getcwd()
+    os.chdir(os.path.abspath(directory))
+    yield
+    os.chdir(here)
+
