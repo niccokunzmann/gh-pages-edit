@@ -38,10 +38,13 @@ def inDirectory(directory):
 @route('/')
 def root():
     s = '''<html><body><div align="center"><h1>Repositories</h1>
-    <p>'''
+    <p>Hier siehts Du eine Liste bereitgestellter Repositories:<ul>'''
     for repository in os.listdir(repositories_folder):
         if not os.path.isdir(repository_to_path(repository)): continue
-        s += '<a href="{}">{}</a><br />'.format('/repo/' + repository, repository)
+        s += '<li><a href="{}">{}</a></li>'.format('/repo/' + repository, repository)
+    s += '</ul></p>'
+    if I_need_an_update:
+        s += '<p><a href="/update">Ich brauche ein Update! Huhu k&uuml;mmere Dich um mich!</a></p>'
     s += '''</div></body></html>'''
     return s
 
@@ -199,8 +202,8 @@ def create_pull_request_on_server(branch):
         }, 'niccokunzmann', 'spiele-mit-kindern')
     return pullrequest.issue_url
 
-@post('/pull/<repository>/')
-@post('/pull/<repository>')
+@route('/pull/<repository>/')
+@route('/pull/<repository>')
 def github_repo_has_changed_hook(repository):
     check_repository(repository)
     with inRepository(repository):
@@ -212,6 +215,23 @@ def github_repo_has_changed_hook(repository):
 @get('/I_am_here.js')
 def get_niccokunzmann_pythonanywhere():
     return static_file('I_am_here.js', root = local_dir)
+
+I_need_an_update = False
+@post('/update')
+def pull_own_source_code():
+    global I_need_an_update
+    I_need_an_update= True
+    return '''<html><body><div align="center">Okay, Ich wei&szlig;, dass ich ein Update brauche.<br />
+              <a href="/update">Update mich!</a></div></body></html>'''
+
+@get('/update/')
+@get('/update')
+def my_sources_have_changed():
+    with inDirectory(local_dir):
+        text = git.pull()
+    return '''<html><body><div align="center"><h1>Ich bin wieder up-to-date!</h1>
+                <p><a href="https://www.pythonanywhere.com/user/niccokunzmann/webapps/">Starte mich neu!</a>
+                </p><p>{}</p></div></body></html>'''.format(text.replace('\n', '\n<br />'))
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
 mimetypes.add_type('text/html; charset=UTF-8', '.htm')
