@@ -207,8 +207,9 @@ def github_repo_has_changed_hook(repository):
     check_repository(repository)
     with inRepository(repository):
         checkout_base_branch()
-        git.pull(PULL_LOCATION, BASE_BRANCH)()
-    return 'Repository updated from ' + PULL_LOCATION
+        text = git.pull(PULL_LOCATION, BASE_BRANCH)()
+    return '''<html><body><div align="center"><h1>Repository successfully updated</h1>
+                <p>from remote <strong>{}</strong></p><p>{}</p></div></body></html>'''.format(PULL_LOCATION, text.replace('\n', '\n<br />'))
 
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
