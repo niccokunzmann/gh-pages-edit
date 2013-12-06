@@ -202,8 +202,8 @@ def create_pull_request_on_server(branch):
         }, 'niccokunzmann', 'spiele-mit-kindern')
     return pullrequest.issue_url
 
-@route('/pull/<repository>/')
-@route('/pull/<repository>')
+@post('/pull/<repository>/')
+@post('/pull/<repository>')
 def github_repo_has_changed_hook(repository):
     check_repository(repository)
     with inRepository(repository):
