@@ -9,6 +9,17 @@ Each repository has 2 remotes at least:
 
 [openpullrequests](https://github.com/openpullrequests) must be contributor to the project you push to.
 
+New Repository
+--------------
+
+First get the repository
+
+	$ git clone https://github.com/niccokunzmann/spiele-mit-kindern.git
+
+The `cd` into the repository:
+
+	cd spiele-mit-kindern
+
 When you see something like this:
 
 	$ git config -l
@@ -17,7 +28,9 @@ When you see something like this:
 	remote.origin.fetch=+refs/heads/*:refs/remotes/origin/*
 	...
 
-those remotes can be added via
+those remotes must be added
 
 	$ git remote add remote_pull https://github.com/niccokunzmann/spiele-mit-kindern.git
 	$ git remote add remote_push git@github.com:openpullrequests/spiele-mit-kindern.git
+
+and that should be all.

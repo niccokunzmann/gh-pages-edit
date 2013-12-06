@@ -191,15 +191,13 @@ def create_pull_request_on_server(branch):
     if not body:
         body = request.forms.get('comment')
     commit = last_commit()
-##    pullrequest = github().pull_requests.create({
-##          "title": title,
-##          "body": body,
-##          "head": commit,
-##          "base": base_branch
-##        }, 'niccokunzmann', 'spiele-mit-kindern')
-##    return pullrequest.issue_url
-    raise HTTPError()
-    return 'https://github.com/niccokunzmann/spiele-mit-kindern/pull/7'
+    pullrequest = github().pull_requests.create({
+          "title": title,
+          "body": body,
+          "head": commit,
+          "base": base_branch
+        }, 'niccokunzmann', 'spiele-mit-kindern')
+    return pullrequest.issue_url
 
 @post('/pull/<repository>/')
 @post('/pull/<repository>')
