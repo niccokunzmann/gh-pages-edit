@@ -5,6 +5,7 @@ from command_line import *
 import mimetypes
 import json
 import pygithub3
+from urllib import urlencode
 
 try:
     __file__
@@ -15,10 +16,10 @@ local_dir = os.path.dirname(__file__)
 
 
 REPOSITORIES_FOLDER = './repositories'
-repositories_folder = os.path.join(local_dir, REPOSITORIES_FOLDER)
+repositories_folder = os.path.abspath(os.path.join(local_dir, REPOSITORIES_FOLDER))
 
 def configuration():
-    return json.load(open('config.txt'))
+    return json.load(open('config.json'))
 
 @DoUndo
 def inDirectory(directory):
@@ -29,11 +30,19 @@ def inDirectory(directory):
 
 @route('/')
 def root():
-    redirect('/repo/spiele-mit-kindern/')
+    s = '''<html><body><div align="center"><h1>Repositories</h1>
+    <p>'''
+    for repository in os.listdir(repositories_folder):
+        if not os.path.isdir(repository_to_path(repository)): continue
+        s += '<a href="{}">{}</a><br />'.format('/repo/' + repository, repository)
+    s += '''</div></body></html>'''
+    return s
+    
     
 bottle.debug(True)
-
-base_branch = 'gh-pages'
+BASE_BRANCH = 'gh-pages'
+PUSH_LOCATION = 'openpullrequests'
+base_branch = BASE_BRANCH
 checkout_base_branch = git.checkout(base_branch)
 repository_to_path = lambda repository: os.path.join(repositories_folder, repository)
 inRepository = lambda repository: inDirectory(repository_to_path(repository))
@@ -49,8 +58,8 @@ def check_repository(repository):
 
 def _repository_content(repository, filepath = ''):
     if filepath.endswith('/') or not filepath:
-        filepath = filepath + 'index.html'
-        return redirect(repository + '/' + filepath)
+        filepath += 'index.html'
+        return redirect(filepath)
     return static_file(filepath, root=repository_to_path(repository))
 
 @get('/branch/<branch>/<repository>/')
@@ -96,10 +105,11 @@ def change_repository_content(repository, filepath = ''):
             branch = new_branch()
             return _change_repository_content(branch, repository, filepath)
 
+# TODO: commit bei keinen aenderungen
 
-@get('/repo/<repository>')
+@route('/repo/<repository>')
 def repository_and_no_directory(repository):
-    redirect('/repo/' + repository + '/')
+    return redirect('/repo/' + repository + '/')
 @get('/repo/<repository>/')
 @get('/repo/<repository>/<filepath:path>')
 def default_repository_content(repository, filepath = ''):
@@ -109,32 +119,61 @@ def default_repository_content(repository, filepath = ''):
             checkout_base_branch()
             return _repository_content(repository, filepath)
 
-@post('/publish/<repository>/')
-@post('/publish/<repository>/<filepath:path>')
-def change_repository_content(repository, filepath = ''):
+def build_url_repo_path(repository, filepath = ''):
+    return os.pat.join('/repo/', repository, filepath)
+
+@post('/publish/repo/<repository>/')
+@post('/publish/repo/<repository>/<filepath:path>')
+def create_pull_request_from_repository(repository, filepath = ''):
     check_repository(repository)
     check_filepath(repository, filepath)
     with inRepository(repository):
         with stash():
+            checkout_base_branch()
             branch = new_branch()
-            _commit_changes(filepath)
-            create_pull_request(branch)
+            return _create_pull_request(repository, filepath)
+
+@post('/publish/branch/<branch>/<repository>/')
+@post('/publish/branch/<branch>/<repository>/<filepath:path>')
+def create_pull_request_from_branch(branch, repository, filepath = ''):
+    check_repository(repository)
+    check_filepath(repository, filepath)
+    with inRepository(repository):
+        with stash():
+            git.checkout(branch)()
+            return _create_pull_request(repository, filepath)
+
+def _create_pull_request(repository, filepath):
+    _commit_changes(filepath)
+    pull_request_url = create_pull_request(branch)
+    pull_request_url = quote(pull_request_url, safe = u':/')
+    repository_url = quote(build_url_repo_path(repository, filepath), safe = u':/')
+    return """
+        <html><body><div align="center">
+            <h1>Eine Anfrage wurde erstellt</h1>
+            <a href="{}">Anfrage ansehen</a><br />
+            <a href="{}">Zur&uuml;ck zur Webseite</a><br />
+        </div></body></html>""".format(pull_request_url, repository_url)
+                                       
+    
 
 def github():
     config = configuration()
-    return pygithub3.Github(login=config['username'], password=config['password'])
+    return pygithub3.Github(login=config['user_name'], password=config['password'])
 
-def create_pull_request(branch):
+def create_pull_request_on_server():
     global pullrequest
-    git.push(branch, branch)() # http://stackoverflow.com/questions/1519006/git-how-to-create-remote-branch
+    git.push(PUSH_LOCATION, branch)() # http://stackoverflow.com/questions/1519006/git-how-to-create-remote-branch
     title = request.forms.get('title')
     body = request.forms.get('body')
+    commit = last_commit()
     pullrequest = github().pull_requests.create({
           "title": title,
           "body": body,
-          "head": branch,
+          "head": commit,
           "base": base_branch
         }, 'niccokunzmann', 'spiele-mit-kindern')
+    return pullrequest.issue_url
     
     
 
@@ -147,4 +186,4 @@ application = default_app()
 
 if __name__ == '__main__':
     from bottle import run
-    run(host='localhost', port=8080, debug=True)
+    run(host='localhost', port=8000, debug=True)
