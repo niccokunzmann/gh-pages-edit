@@ -50,8 +50,8 @@ def urljoin(*parts):
     
 bottle.debug(True)
 BASE_BRANCH = 'gh-pages'
-PUSH_LOCATION = 'openpullrequests'
-PULL_LOCATION = 'niccokunzmann'
+PUSH_LOCATION = 'remote_push'
+PULL_LOCATION = 'remote_pull'
 base_branch = BASE_BRANCH
 checkout_base_branch = git.checkout(base_branch)
 repository_to_path = lambda repository: os.path.join(repositories_folder, repository)
@@ -207,19 +207,8 @@ def github_repo_has_changed_hook(repository):
     check_repository(repository)
     with inRepository(repository):
         checkout_base_branch()
-        updates = [PULL_LOCATION]
         git.pull(PULL_LOCATION, BASE_BRANCH)()
-        try: git.pull(PUSH_LOCATION, BASE_BRANCH)()
-        except CalledProcessError as e:
-            if 'Couldn\'t find remote ref' not in e.output: raise
-            try: git.pull('origin', BASE_BRANCH)()
-            except CalledProcessError as e:
-                if 'Couldn\'t find remote ref' not in e.output: raise
-            else:
-                updates.append('origin')
-        else:
-            updates.append(PUSH_LOCATION)
-    return 'Repository updated from ' + ', '.join(updates)
+    return 'Repository updated from ' + PULL_LOCATION
 
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
