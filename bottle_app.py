@@ -209,6 +209,9 @@ def github_repo_has_changed_hook(repository):
     return '''<html><body><div align="center"><h1>Repository successfully updated</h1>
                 <p>from remote <strong>{}</strong></p><p>{}</p></div></body></html>'''.format(PULL_LOCATION, text.replace('\n', '\n<br />'))
 
+@get('/I_am_here.js')
+def get_niccokunzmann_pythonanywhere():
+    return static_file('I_am_here.js', root = local_dir)
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
 mimetypes.add_type('text/html; charset=UTF-8', '.htm')
