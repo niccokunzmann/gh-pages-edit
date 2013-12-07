@@ -60,6 +60,7 @@ def check_repository(repository):
 
 def _repository_content(repository, filepath = ''):
     if filepath.endswith('/') or not filepath:
+        assert request.method == 'GET'
         filepath = 'index.html'
         return redirect(filepath)
     return static_file(filepath, root=repository_to_path(repository))
@@ -97,8 +98,7 @@ def _commit_changes(filepath):
 
 def _change_repository_content(branch, repository, filepath):
     if filepath.endswith('/') or not filepath:
-        filepath = 'index.html'
-        return redirect(filepath)
+        filepath += 'index.html'
     _commit_changes(filepath)
     return redirect('/branch/{}/{}/{}'.format(branch, repository, filepath))
 
