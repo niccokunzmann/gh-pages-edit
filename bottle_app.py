@@ -169,7 +169,7 @@ def _create_pull_request(branch, repository, filepath):
                 Ich werde es jetzt von Zeit zu Zeit nochmal versuchen.<br />
                 <a href="{}">Hochgeladenes ansehen</a><br />
                 <a href="{}">Zur&uuml;ck zur Webseite</a><br />
-                <a href="/retry_pull_requests">Alle wartenden Anfragen</a><br />
+                <a href="/retry_pull_requests">Nochmal versuchen</a><br />
                 Github meldet: <div class="GithubError">{}</div>
             </div></body></html>""".format(pushed_branch_link, repository_url, e)
     pull_request_url = quote(pull_request_url, safe = u':/')
