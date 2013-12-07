@@ -1,5 +1,6 @@
 import subprocess
 import os
+import threading
 
 class CalledProcessError(subprocess.CalledProcessError):
     def __str__(self):
@@ -74,8 +75,10 @@ def new_branch(prefix = 'autobranch'):
     return branch_name
 
 class DoUndo(object):
-
     class DoUndoWith(object):
+        
+        rlock = threading.RLock()
+
         def __init__(self, function, args, kw):
             self.function = function
             self.args = args
@@ -85,10 +88,12 @@ class DoUndo(object):
             self.generator = self.function(*self.args, **self.kw)
             for has_value in self.generator:
                 break
+            self.rlock.__enter__()
 
         def __exit__(self, *args):
             for has_value in self.generator:
                 raise ValueError('Generator should have exited')
+            self.rlock.__exit__(*args)
 
     def __init__(self, function):
         self.function = function

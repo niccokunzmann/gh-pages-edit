@@ -9,6 +9,8 @@ import pygithub3
 from urllib import quote
 from requests import HTTPError
 from pull_request import *
+import time
+import threading
 
 __file__, local_dir = get_local_dir(globals())
 
@@ -151,7 +153,7 @@ def create_pull_request_from_branch(branch, repository, filepath = ''):
 def _create_pull_request(branch, repository, filepath):
     _commit_changes(filepath)
     repository_url = quote(build_url_branch_repo_path(branch, repository, filepath), safe = u':/')
-    pull_request = PullRequest.from_request(branch, repository, PUSH_REMOTE)
+    pull_request = PullRequest.from_request(branch, repository, PUSH_REMOTE, repository_url)
     try:
         pull_request_url = pull_request.create_on_github(github()).issue_url
     except HTTPError as e:
@@ -164,7 +166,8 @@ def _create_pull_request(branch, repository, filepath):
                 Ich werde es jetzt von Zeit zu Zeit nochmal versuchen.<br />
                 <a href="{}">Hochgeladenes ansehen</a><br />
                 <a href="{}">Zur&uuml;ck zur Webseite</a><br />
-                Github meldet: {}
+                <a href="/retry_pull_requests">Alle wartenden Anfragen</a><br />
+                Github meldet: <div class="GithubError">{}</div>
             </div></body></html>""".format(pushed_branch_link, repository_url, e)
     pull_request_url = quote(pull_request_url, safe = u':/')
     return """
@@ -205,6 +208,59 @@ def my_sources_have_changed():
     return '''<html><body><div align="center"><h1>Ich bin wieder up-to-date!</h1>
                 <p><a href="https://www.pythonanywhere.com/user/niccokunzmann/webapps/">Starte mich neu!</a>
                 </p><p>{}</p></div></body></html>'''.format(text.replace('\n', '\n<br />'))
+
+@get('/retry_pull_requests')
+def retry_all_failed_pull_requests():
+    pull_requests = PullRequest.all_failed()
+    failed = []
+    succeeded = []
+    for pull_request in pull_requests:
+        try:
+            with inRepository(pull_request.repository):
+                git.checkout(pull_request.branch)()
+                github_pull_request = pull_request.create_on_github(github())
+        except HTTPError as error:
+            failed.append((pull_request, error))
+        else:
+            succeeded.append((pull_request, github_pull_request))
+    succeeded_string = ''
+    for pull_request, github_pull_request in succeeded:
+        succeeded_string += '\n        <li><a href="{}">Zu Github</a><a href="{}">Zur Webseite</a></li>'.format(
+            github_pull_request.issue_url, pull_request.repository_url)
+    failed_string = ''
+    for pull_request, error in failed:
+        failed_string += '''\n         <li><a href="{}">Zu Github</a> <a href="{}">Zur Webseite</a>
+                                            Github meldet: <div class="GithubError">{}</div></li>'''.format(
+            pull_request.pushed_branch_link, pull_request.repository_url, error)
+    return """<html><body><div align="center"><h1>Offene Anfragen</h1>
+    Diese Anfragen waren soeben erfolgreich:
+    <ul>
+        {}
+    </ul>
+    Diese Anfragen stehen noch aus:
+    <ul>
+        {}
+    </ul>
+</div></body></html>""".format(succeeded_string, failed_string)
+
+last_retry_all_failed_pull_requests = time.time()
+seconds_between_last_retry_all_failed_pull_requests = 60 * 60 
+
+def retry_all_failed_pull_requests_thread():
+    global last_retry_all_failed_pull_requests
+    while 1:
+        while time.time() < last_retry_all_failed_pull_requests + seconds_between_last_retry_all_failed_pull_requests:
+            time.sleep(1)
+        print 'retrying all pull requests'
+        try:
+            retry_all_failed_pull_requests()
+        except:
+            traceback.print_exc()
+        last_retry_all_failed_pull_requests = time.time()
+
+thread = threading.Thread(target = retry_all_failed_pull_requests_thread)
+thread.daemon = True
+thread.start()
 
 mimetypes.add_type('text/html; charset=UTF-8', '.html')
 mimetypes.add_type('text/html; charset=UTF-8', '.htm')

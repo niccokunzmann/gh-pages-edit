@@ -40,7 +40,7 @@ class PullRequest(object):
     # creation functions
 
     required_names = 'branch repository commit title body base_branch '\
-            'target_repository_owner target_repository push_remote'.split()
+            'target_repository_owner target_repository push_remote repository_url'.split()
     all_names = required_names + 'tries'.split()
     identity_names = ['commit']
 
@@ -68,7 +68,7 @@ class PullRequest(object):
             self.tries = 0
 
     @classmethod
-    def from_request(cls, branch, repository, push_remote):
+    def from_request(cls, branch, repository, push_remote, repository_url):
         """create a pull request from the request to the bottle server"""
         title = request.forms.get('title')
         body = request.forms.get('body')
@@ -82,7 +82,7 @@ class PullRequest(object):
                    base_branch = 'gh-pages',
                    target_repository_owner = 'niccokunzmann',
                    target_repository = 'spiele-mit-kindern',
-                   push_remote = push_remote)
+                   push_remote = push_remote, repository_url = repository_url)
 
     @classmethod
     def all_failed(cls):
@@ -95,14 +95,14 @@ class PullRequest(object):
         # http://stackoverflow.com/questions/1519006/git-how-to-create-remote-branch
         git.push(self.push_remote, self.branch + ':' + self.github_branch_name)()
         try:
-##            pull_request = github.pull_requests.create({
-##                  "title": self.title,
-##                  "body": self.body,
-##                  "head": self.commit,
-##                  "base": self.base_branch
-##                }, self.target_repository_owner, self.target_repository)
+            pull_request = github.pull_requests.create({
+                  "title": self.title,
+                  "body": self.body,
+                  "head": self.commit,
+                  "base": self.base_branch
+                }, self.target_repository_owner, self.target_repository)
 ##            pull_request = FakeGithubPullRequest() # test positive case
-            raise HTTPError() # test negative case
+##            raise HTTPError() # test negative case
         except:
             self.github_failed()
             raise 
