@@ -2,3 +2,5 @@
 __pycache__
 /repositories/*
 /config.json
+/test_open_pull_requests.json
+/open_pull_requests.json

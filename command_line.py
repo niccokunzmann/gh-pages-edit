@@ -111,3 +111,12 @@ def inDirectory(directory):
     yield
     os.chdir(here)
 
+def get_local_dir(globals):
+    if '__file__' in globals:
+        # f***ing git shell
+        __file__ = os.path.abspath(globals['__file__'])
+        local_dir = os.path.join(__file__, '..')
+    else:
+        local_dir = os.getcwd()
+        __file__ = os.path.join(local_dir, globals['__name__'] + '.py')
+    return __file__, local_dir
