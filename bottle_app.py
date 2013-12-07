@@ -60,7 +60,7 @@ def check_repository(repository):
 
 def _repository_content(repository, filepath = ''):
     if filepath.endswith('/') or not filepath:
-        filepath += 'index.html'
+        filepath = 'index.html'
         return redirect(filepath)
     return static_file(filepath, root=repository_to_path(repository))
 
@@ -96,6 +96,9 @@ def _commit_changes(filepath):
     
 
 def _change_repository_content(branch, repository, filepath):
+    if filepath.endswith('/') or not filepath:
+        filepath = 'index.html'
+        return redirect(filepath)
     _commit_changes(filepath)
     return redirect('/branch/{}/{}/{}'.format(branch, repository, filepath))
 
@@ -225,7 +228,7 @@ def retry_all_failed_pull_requests():
             succeeded.append((pull_request, github_pull_request))
     succeeded_string = ''
     for pull_request, github_pull_request in succeeded:
-        succeeded_string += '\n        <li><a href="{}">Zu Github</a><a href="{}">Zur Webseite</a></li>'.format(
+        succeeded_string += '\n        <li><a href="{}">Zu Github</a> <a href="{}">Zur Webseite</a></li>'.format(
             github_pull_request.issue_url, pull_request.repository_url)
     failed_string = ''
     for pull_request, error in failed:
