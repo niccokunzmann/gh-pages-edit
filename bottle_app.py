@@ -11,6 +11,8 @@ from requests import HTTPError
 from pull_request import *
 import time
 import threading
+import traceback
+import StringIO
 
 __file__, local_dir = get_local_dir(globals())
 
@@ -172,13 +174,20 @@ def _create_pull_request(branch, repository, filepath):
                 <a href="/retry_pull_requests">Nochmal versuchen</a><br />
                 Github meldet: <div class="GithubError">{}</div>
             </div></body></html>""".format(pushed_branch_link, repository_url, e)
+    except:
+        file = StringIO.StringIO()
+        traceback.print_exc(file = file)
+        error = 'Es gab einen Fehler: <pre>\r\n' + file.getvalue() + '</pre>'
+    else:
+        error = ''
     pull_request_url = quote(pull_request_url, safe = u':/')
     return """
         <html><body><div align="center">
             <h1>Eine Anfrage wurde erstellt</h1>
             <a href="{}">Anfrage ansehen</a><br />
             <a href="{}">Zur&uuml;ck zur Webseite</a><br />
-        </div></body></html>""".format(pull_request_url, repository_url)
+            {}
+        </div></body></html>""".format(pull_request_url, repository_url, error)
 
 
 @post('/pull/<repository>/')
