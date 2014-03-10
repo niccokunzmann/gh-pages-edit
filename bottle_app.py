@@ -29,7 +29,7 @@ def github():
 
 @route('/')
 def root():
-    s = '''<html><body><div align="center"><h1>Repositories</h1>
+    s = '''<html><body><div style="margin:auto"><h1>Repositories</h1>
     <p>Hier siehts Du eine Liste bereitgestellter Repositories:<ul>'''
     for repository in os.listdir(repositories_folder):
         if not os.path.isdir(repository_to_path(repository)): continue
@@ -42,7 +42,7 @@ def root():
 
 def urljoin(*parts):
     return '/'.join(parts)
-    
+
 bottle.debug(True)
 BASE_BRANCH = 'gh-pages'
 PUSH_REMOTE = 'remote_push'
@@ -96,7 +96,7 @@ def _commit_changes(filepath):
     except CalledProcessError as e:
         if 'nothing to commit, working directory clean' not in e.output:
             raise
-    
+
 
 def _change_repository_content(branch, repository, filepath):
     if filepath.endswith('/') or not filepath:
@@ -154,36 +154,40 @@ def create_pull_request_from_branch(branch, repository, filepath = ''):
             git.checkout(branch)()
             return _create_pull_request(branch, repository, filepath)
 
-    
+
+def traceback_for_html():
+    file = StringIO.StringIO()
+    traceback.print_exc(file = file)
+    return '<pre class="PythonTraceback">\r\n' + file.getvalue() + '</pre>'
+
 def _create_pull_request(branch, repository, filepath):
     _commit_changes(filepath)
     repository_url = quote(build_url_branch_repo_path(branch, repository, filepath), safe = u':/')
     pull_request = PullRequest.from_request(branch, repository, PUSH_REMOTE, repository_url)
     try:
         pull_request_url = pull_request.create_on_github(github()).view_github_html_url
-    except:
+    except Exception as e:
         # https://github.com/openpullrequests/spiele-mit-kindern/tree/autobranch6
         # todo: add pull request as unfulfilled
         pushed_branch_link = pull_request.pushed_branch_link
         if isinstance(e, HTTPError):
             error = ''
         else:
-            file = StringIO.StringIO()
-            traceback.print_exc(file = file)
-            error = '<pre class="PythonTraceback">\r\n' + file.getvalue() + '</pre>'
+            error = traceback_for_html()
         return """
-            <html><body><div align="center">
+            <html><body><div style="margin:auto">
                 <h1>Anfrage konnte noch nicht gestellt werden</h1>
                 Ich werde es jetzt von Zeit zu Zeit nochmal versuchen.<br />
                 <a href="{}">Hochgeladenes ansehen</a><br />
                 <a href="{}">Zur&uuml;ck zur Webseite</a><br />
                 <a href="/retry_pull_requests">Nochmal versuchen</a><br />
                 Github meldet: <div class="GithubError">{}</div>
-                {}
-            </div></body></html>""".format(pushed_branch_link, repository_url, e, error)
+            </div>
+            {}
+            </body></html>""".format(pushed_branch_link, repository_url, e, error)
     pull_request_url = quote(pull_request_url, safe = u':/')
     return """
-        <html><body><div align="center">
+        <html><body><div style="margin:auto">
             <h1>Eine Anfrage wurde erstellt</h1>
             <a href="{}">Anfrage ansehen</a><br />
             <a href="{}">Zur&uuml;ck zur Webseite</a><br />
@@ -197,7 +201,7 @@ def github_repo_has_changed_hook(repository):
     with inRepository(repository):
         checkout_base_branch()
         text = git.pull(PULL_REMOTE, BASE_BRANCH)()
-    return '''<html><body><div align="center"><h1>Repository successfully updated</h1>
+    return '''<html><body><div style="margin:auto"><h1>Repository successfully updated</h1>
                 <p>from remote <strong>{}</strong></p><p>{}</p></div></body></html>'''.format(PULL_REMOTE, text.replace('\n', '\n<br />'))
 
 @get('/I_am_here.js')
@@ -209,7 +213,7 @@ I_need_an_update = False
 def pull_own_source_code():
     global I_need_an_update
     I_need_an_update= True
-    return '''<html><body><div align="center">Okay, Ich wei&szlig;, dass ich ein Update brauche.<br />
+    return '''<html><body><div style="margin:auto">Okay, Ich wei&szlig;, dass ich ein Update brauche.<br />
               <a href="/update">Update mich!</a></div></body></html>'''
 
 @get('/update/')
@@ -217,7 +221,7 @@ def pull_own_source_code():
 def my_sources_have_changed():
     with inDirectory(local_dir):
         text = git.pull()
-    return '''<html><body><div align="center"><h1>Ich bin wieder up-to-date!</h1>
+    return '''<html><body><div style="margin:auto"><h1>Ich bin wieder up-to-date!</h1>
                 <p><a href="https://www.pythonanywhere.com/user/niccokunzmann/webapps/">Starte mich neu!</a>
                 </p><p>{}</p></div></body></html>'''.format(text.replace('\n', '\n<br />'))
 
@@ -232,7 +236,9 @@ def retry_all_failed_pull_requests():
                 git.checkout(pull_request.branch)()
                 github_pull_request = pull_request.create_on_github(github())
         except HTTPError as error:
-            failed.append((pull_request, error))
+            failed.append((pull_request, error, ''))
+        except Exception as error:
+            failed.append((pull_request, error, traceback_for_html()))
         else:
             succeeded.append((pull_request, github_pull_request))
     succeeded_string = ''
@@ -240,11 +246,13 @@ def retry_all_failed_pull_requests():
         succeeded_string += '\n        <li><a href="{}">Zu Github</a> <a href="{}">Zur Webseite</a></li>'.format(
             github_pull_request.view_github_html_url, pull_request.repository_url)
     failed_string = ''
-    for pull_request, error in failed:
+    for pull_request, error, tb in failed:
         failed_string += '''\n         <li><a href="{}">Zu Github</a> <a href="{}">Zur Webseite</a>
-                                            Github meldet: <div class="GithubError">{}</div></li>'''.format(
-            pull_request.pushed_branch_link, pull_request.repository_url, error)
-    return """<html><body><div align="center"><h1>Offene Anfragen</h1>
+                                         Github meldet: <div class="GithubError">{}</div>
+                                         {}
+                                       </li>'''.format(
+            pull_request.pushed_branch_link, pull_request.repository_url, error, tb)
+    return """<html><body><div style="margin:auto"><h1>Offene Anfragen</h1>
     Diese Anfragen waren soeben erfolgreich:
     <ul>
         {}
@@ -256,7 +264,7 @@ def retry_all_failed_pull_requests():
 </div></body></html>""".format(succeeded_string, failed_string)
 
 last_retry_all_failed_pull_requests = time.time()
-seconds_between_last_retry_all_failed_pull_requests = 60 * 60 
+seconds_between_last_retry_all_failed_pull_requests = 60 * 60
 
 def retry_all_failed_pull_requests_thread():
     global last_retry_all_failed_pull_requests
