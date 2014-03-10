@@ -29,7 +29,7 @@ def github():
 
 @route('/')
 def root():
-    s = '''<html><body><div style="margin:auto"><h1>Repositories</h1>
+    s = '''<html><body><div class="CenteredDiv"><h1>Repositories</h1>
     <p>Hier siehts Du eine Liste bereitgestellter Repositories:<ul>'''
     for repository in os.listdir(repositories_folder):
         if not os.path.isdir(repository_to_path(repository)): continue
@@ -175,7 +175,7 @@ def _create_pull_request(branch, repository, filepath):
         else:
             error = traceback_for_html()
         return """
-            <html><body><div style="margin:auto">
+            <html><body><div class="CenteredDiv">
                 <h1>Anfrage konnte noch nicht gestellt werden</h1>
                 Ich werde es jetzt von Zeit zu Zeit nochmal versuchen.<br />
                 <a href="{}">Hochgeladenes ansehen</a><br />
@@ -187,7 +187,7 @@ def _create_pull_request(branch, repository, filepath):
             </body></html>""".format(pushed_branch_link, repository_url, e, error)
     pull_request_url = quote(pull_request_url, safe = u':/')
     return """
-        <html><body><div style="margin:auto">
+        <html><body><div class="CenteredDiv">
             <h1>Eine Anfrage wurde erstellt</h1>
             <a href="{}">Anfrage ansehen</a><br />
             <a href="{}">Zur&uuml;ck zur Webseite</a><br />
@@ -201,7 +201,7 @@ def github_repo_has_changed_hook(repository):
     with inRepository(repository):
         checkout_base_branch()
         text = git.pull(PULL_REMOTE, BASE_BRANCH)()
-    return '''<html><body><div style="margin:auto"><h1>Repository successfully updated</h1>
+    return '''<html><body><div class="CenteredDiv"><h1>Repository successfully updated</h1>
                 <p>from remote <strong>{}</strong></p><p>{}</p></div></body></html>'''.format(PULL_REMOTE, text.replace('\n', '\n<br />'))
 
 @get('/I_am_here.js')
@@ -213,7 +213,7 @@ I_need_an_update = False
 def pull_own_source_code():
     global I_need_an_update
     I_need_an_update= True
-    return '''<html><body><div style="margin:auto">Okay, Ich wei&szlig;, dass ich ein Update brauche.<br />
+    return '''<html><body><div class="CenteredDiv">Okay, Ich wei&szlig;, dass ich ein Update brauche.<br />
               <a href="/update">Update mich!</a></div></body></html>'''
 
 @get('/update/')
@@ -221,7 +221,7 @@ def pull_own_source_code():
 def my_sources_have_changed():
     with inDirectory(local_dir):
         text = git.pull()
-    return '''<html><body><div style="margin:auto"><h1>Ich bin wieder up-to-date!</h1>
+    return '''<html><body><div class="CenteredDiv"><h1>Ich bin wieder up-to-date!</h1>
                 <p><a href="https://www.pythonanywhere.com/user/niccokunzmann/webapps/">Starte mich neu!</a>
                 </p><p>{}</p></div></body></html>'''.format(text.replace('\n', '\n<br />'))
 
@@ -252,7 +252,7 @@ def retry_all_failed_pull_requests():
                                          {}
                                        </li>'''.format(
             pull_request.pushed_branch_link, pull_request.repository_url, error, tb)
-    return """<html><body><div style="margin:auto"><h1>Offene Anfragen</h1>
+    return """<html><body><div class="CenteredDiv"><h1>Offene Anfragen</h1>
     Diese Anfragen waren soeben erfolgreich:
     <ul>
         {}
