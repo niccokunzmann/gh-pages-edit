@@ -165,6 +165,12 @@ def _create_pull_request(branch, repository, filepath):
         # https://github.com/openpullrequests/spiele-mit-kindern/tree/autobranch6
         # todo: add pull request as unfulfilled
         pushed_branch_link = pull_request.pushed_branch_link
+        if isinstance(e, HTTPError):
+            error = ''
+        else:
+            file = StringIO.StringIO()
+            traceback.print_exc(file = file)
+            error = '<pre class="PythonTraceback">\r\n' + file.getvalue() + '</pre>'
         return """
             <html><body><div align="center">
                 <h1>Anfrage konnte noch nicht gestellt werden</h1>
@@ -173,21 +179,15 @@ def _create_pull_request(branch, repository, filepath):
                 <a href="{}">Zur&uuml;ck zur Webseite</a><br />
                 <a href="/retry_pull_requests">Nochmal versuchen</a><br />
                 Github meldet: <div class="GithubError">{}</div>
-            </div></body></html>""".format(pushed_branch_link, repository_url, e)
-    except:
-        file = StringIO.StringIO()
-        traceback.print_exc(file = file)
-        error = 'Es gab einen Fehler: <pre>\r\n' + file.getvalue() + '</pre>'
-    else:
-        error = ''
+                {}
+            </div></body></html>""".format(pushed_branch_link, repository_url, e, error)
     pull_request_url = quote(pull_request_url, safe = u':/')
     return """
         <html><body><div align="center">
             <h1>Eine Anfrage wurde erstellt</h1>
             <a href="{}">Anfrage ansehen</a><br />
             <a href="{}">Zur&uuml;ck zur Webseite</a><br />
-            {}
-        </div></body></html>""".format(pull_request_url, repository_url, error)
+        </div></body></html>""".format(pull_request_url, repository_url)
 
 
 @post('/pull/<repository>/')
