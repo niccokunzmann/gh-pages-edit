@@ -152,6 +152,16 @@ class PullRequest(object):
     def pushed_branch_link(self):
         return 'https://github.com/openpullrequests/' + self.repository + '/tree/' + self.github_branch_name
 
+    @property
+    def view_github_html_url(self):
+        import requests
+        url = self.issue_url
+        github_html = requests.get(url)
+        if github_html.status_code == 200 and \
+           b'application/json' in github_html.headers.get('Content-Type', ''):
+            url = github_html.json().get('html_url', url)
+        return url
+
 for name in PullRequest.all_names:
     setattr(PullRequest, name, getter_setter(name))
 

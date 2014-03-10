@@ -158,7 +158,7 @@ def _create_pull_request(branch, repository, filepath):
     repository_url = quote(build_url_branch_repo_path(branch, repository, filepath), safe = u':/')
     pull_request = PullRequest.from_request(branch, repository, PUSH_REMOTE, repository_url)
     try:
-        pull_request_url = pull_request.create_on_github(github()).issue_url
+        pull_request_url = pull_request.create_on_github(github()).view_github_html_url
     except HTTPError as e:
         # https://github.com/openpullrequests/spiele-mit-kindern/tree/autobranch6
         # todo: add pull request as unfulfilled
@@ -229,7 +229,7 @@ def retry_all_failed_pull_requests():
     succeeded_string = ''
     for pull_request, github_pull_request in succeeded:
         succeeded_string += '\n        <li><a href="{}">Zu Github</a> <a href="{}">Zur Webseite</a></li>'.format(
-            github_pull_request.issue_url, pull_request.repository_url)
+            github_pull_request.view_github_html_url, pull_request.repository_url)
     failed_string = ''
     for pull_request, error in failed:
         failed_string += '''\n         <li><a href="{}">Zu Github</a> <a href="{}">Zur Webseite</a>
