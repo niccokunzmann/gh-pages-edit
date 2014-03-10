@@ -161,7 +161,7 @@ def _create_pull_request(branch, repository, filepath):
     pull_request = PullRequest.from_request(branch, repository, PUSH_REMOTE, repository_url)
     try:
         pull_request_url = pull_request.create_on_github(github()).view_github_html_url
-    except HTTPError as e:
+    except:
         # https://github.com/openpullrequests/spiele-mit-kindern/tree/autobranch6
         # todo: add pull request as unfulfilled
         pushed_branch_link = pull_request.pushed_branch_link
